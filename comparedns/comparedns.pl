@@ -11,6 +11,9 @@ my $domains = $yaml->[0];
 
 my $comp = Array::Compare->new;
 
+my $totalrecords = 0;
+my $errors = 0;
+
 foreach my $domain (sort keys %$domains) {
     print "$domain:\n";
     my $dnssrv1 = $domains->{$domain}->{'dnsservers'}[0];
@@ -62,15 +65,24 @@ foreach my $domain (sort keys %$domains) {
             push @addr2, $rr->plain;
         }
 
-        print "Expected records:\n".join("\n",sort @addr1)."\n";
+        # print "Expected records:\n".join("\n",sort @addr1)."\n";
         if ($comp->perm(\@addr1, \@addr2)) {
             # print "Records are OK\n";
+            $totalrecords++;
         } else {
-            print "MISMATCH: Records are not the same!\n";
+            print "\nMISMATCH: Records are not the same!\n";
             print "DNS1:\n".join("\n",sort @addr1)."\n";
-            print "DNS2:\n".join("\n",sort @addr2)."\n";
+            print "DNS2:\n".join("\n",sort @addr2)."\n\n";
+            $errors++;
         }
-        print "\n";
+        # print "\n";
         
     }
+}
+
+print "\nTotal records checked : $totalrecords\n";
+print "Records with errors   : $errors\n";
+
+if ($errors > 0) {
+    print "\nTHERE WERE ERRORS\n";
 }
