@@ -5,18 +5,10 @@ example.com:
     - ns-128.awsdns-16.com
 
   records:
-    '@':
-      - A
-      - MX
-      - TXT
-    www:
-      - CNAME
-    ftp:
-      - CNAME
-    autodiscover:
-      - CNAME
-    _dnsauth:
-      - TXT
-    _pki-validation:
-      - TXT
+    - '@'
+    - www
+    - ftp
+    - autodiscover
+    - _dnsauth
+    - _pki-validation
     
