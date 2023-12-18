@@ -15,7 +15,7 @@ my $totalrecords = 0;
 my $errors = 0;
 
 foreach my $domain (sort keys %$domains) {
-    print "$domain:\n";
+    print "\nDOMAIN $domain:\n";
     my $dnssrv1 = $domains->{$domain}->{'dnsservers'}[0];
     my $resolver1 = Net::DNS::Resolver->new;
     $resolver1->tcp_timeout(5);
@@ -37,11 +37,13 @@ foreach my $domain (sort keys %$domains) {
         my $result1 = $resolver1->query($queryname,'ANY');
         if (! $result1) {
             print "Record not found or resolver error from $dnssrv1\n";
+            $errors++;
             next;
         }
         my $result2 = $resolver2->query($queryname,'ANY');
         if (! $result2) {
             print "Record not found or resolver error from $dnssrv2\n";
+            $errors++;
             next;
         }
         # print Dumper $result1;
@@ -54,7 +56,14 @@ foreach my $domain (sort keys %$domains) {
             # Don't need SOA records, or NS records for the apex as we expect them to be different
             # unless we are checking currently active servers
             next if ((($queryname eq $domain) && ($rr->type eq 'NS')) or $rr->type eq 'SOA');
-            push @addr1, $rr->plain;
+            # If the primary result is a CNAME, ignore all the possible additional records
+            if ($rr->type eq 'CNAME') {
+                # Empty the existing array, push the record, then skip the rest
+                @addr1 = ( $rr->plain );
+                last;
+            } else {
+                push @addr1, $rr->plain;
+            }
             # print $rr->type." ";
             # print $rr->plain."\n";
         }
@@ -62,7 +71,16 @@ foreach my $domain (sort keys %$domains) {
             # Don't need SOA records, or NS records for the apex as we expect them to be different
             # unless we are checking currently active servers
             next if ((($queryname eq $domain) && ($rr->type eq 'NS')) or $rr->type eq 'SOA');
-            push @addr2, $rr->plain;
+            # If the primary result is a CNAME, ignore all the possible additional records
+            if ($rr->type eq 'CNAME') {
+                # Empty the existing array, push the record, then skip the rest
+                @addr2 = ( $rr->plain );
+                # print $rr->type." ";
+                # print $rr->plain."\n";
+                last;
+            } else {
+                push @addr2, $rr->plain;
+            }
         }
 
         # print "Expected records:\n".join("\n",sort @addr1)."\n";
