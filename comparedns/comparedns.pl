@@ -29,20 +29,20 @@ foreach my $domain (sort keys %$domains) {
     print "DNS1: $dnssrv1\tDNS2: $dnssrv2\n\n";
     my $records = $domains->{$domain}->{'records'};
     foreach my $recordname (@$records) {
-        print "Checking record: $recordname\n";
+        # print "Checking record: $recordname\n";
         my $queryname = "$recordname.$domain";
         if ($recordname eq '@') {
             $queryname = $domain;
         }
         my $result1 = $resolver1->query($queryname,'ANY');
         if (! $result1) {
-            print "Record not found or resolver error from $dnssrv1\n";
+            print "Record: $recordname: not found or resolver error from $dnssrv1\n";
             $errors++;
             next;
         }
         my $result2 = $resolver2->query($queryname,'ANY');
         if (! $result2) {
-            print "Record not found or resolver error from $dnssrv2\n";
+            print "Record: $recordname: not found or resolver error from $dnssrv2\n";
             $errors++;
             next;
         }
@@ -88,7 +88,7 @@ foreach my $domain (sort keys %$domains) {
             # print "Records are OK\n";
             $totalrecords++;
         } else {
-            print "\nMISMATCH: Records are not the same!\n";
+            print "\nRecord: $recordname: MISMATCH: Records are not the same!\n";
             print "DNS1:\n".join("\n",sort @addr1)."\n";
             print "DNS2:\n".join("\n",sort @addr2)."\n\n";
             $errors++;
