@@ -1,0 +1,117 @@
+#!/usr/bin/python3
+
+import argparse
+import sys
+
+parser = argparse.ArgumentParser()
+parser.add_argument("FILE1", help="Name the old license file")
+parser.add_argument("FILE2", help="Name the old license file")
+
+parser.add_argument("-d", "--debugmsg", help="Print debugging info", action="store_true")
+
+args = parser.parse_args()
+
+if args.debugmsg:
+    print(f"File 1: {args.FILE1}")
+    print(f"File 2: {args.FILE2}")
+
+def ParseFlexLMFile(filename):
+    if args.debugmsg:
+        print(f"Reading file {filename}")
+    file = open(filename,"r")
+    flexlminfo = {
+        'SERVER': '',
+        'DAEMON': {},
+        'FEATURE': {},
+    }
+    for rawline in file:
+        line = rawline.strip()
+        if line.startswith("#"): # Skip comments
+            continue
+        if line.startswith("#"): # Skip comments
+            continue
+        if line == '':
+            continue
+        # print(line)
+        data = line.split()
+
+        # Now look for important lines
+        if data[0] == 'FEATURE':
+            if args.debugmsg:
+                print(f"Got FEATURE {data[1]}")
+            # There can be more than one feature with different expirations. In theory I guess there could be
+            # more than one with the same expiration, but different versions
+            feature = data[1]
+            version = data[3]
+            expiration = data[4]
+            quantity = data[5]
+            if args.debugmsg:
+                print(f"{feature} {version} {expiration} {quantity}")
+            key = feature+":"+version+":"+expiration
+            if key in flexlminfo['FEATURE'].keys():
+                print(f"ERROR? Found a duplicate feature and expiration: {key} - talk to Brian O'Neill")
+                sys.exit(2)
+            flexlminfo['FEATURE'][key] = {
+                'featurename': feature,
+                'version': version,
+                'expiration': expiration,
+                'quantity': quantity,
+            }
+        elif data[0] == 'SERVER':
+            if args.debugmsg:
+                print(f"Got SERVER {data[1]}")
+            flexlminfo['SERVER'] = line.rstrip()
+        elif data[0] == 'DAEMON':
+            # There can be more than one - typically only in Cadence, and the verplex daemon is often ignored
+            if args.debugmsg:
+                print(f"Got DAEMON {data[1]}")
+            flexlminfo['DAEMON'][data[1]] = line.rstrip()
+
+    return flexlminfo
+
+# end ParseFlexLMFile()
+
+file1info = ParseFlexLMFile(args.FILE1)
+file2info = ParseFlexLMFile(args.FILE2)
+# print(file1info)
+
+# Compare SERVER lines
+if file1info['SERVER'] == file2info['SERVER']:
+    print("SERVER: Matched")
+else:
+    print("SERVER: DIFFERENCE FOUND:")
+    print("File 1: "+file1info['SERVER'])
+    print("File 2: "+file2info['SERVER'])
+
+# Compare DAEMON lines
+# Doing this cheaply
+if file1info['DAEMON'] == file2info['DAEMON']:
+    print("DAEMON: Matched")
+else:
+    print("DAEMON: DIFFERENCE FOUND:")
+    print("File 1:")
+    for daemon in file1info['DAEMON']:
+        print(file1info['DAEMON'][daemon])
+    print("File 2:")
+    for daemon in file2info['DAEMON']:
+        print(file2info['DAEMON'][daemon])
+
+# Comparing features means we need to look in both directions, so do this in three phases
+
+# Features in both files
+for feature in dict(sorted(file1info['FEATURE'].items())).keys():
+    if feature in file2info['FEATURE'].keys():
+        # print(f"{feature} is in both")
+        # Now compare the quantities
+        if file1info['FEATURE'][feature]['quantity'] != file2info['FEATURE'][feature]['quantity']:
+            print(f"FEATURE {file1info['FEATURE'][feature]['featurename']}, version {file1info['FEATURE'][feature]['version']}, exp {file1info['FEATURE'][feature]['expiration']} quantity changed: {file1info['FEATURE'][feature]['quantity']} changed to {file2info['FEATURE'][feature]['quantity']}")
+
+# Features only in FILE1
+for feature in dict(sorted(file1info['FEATURE'].items())).keys():
+    if feature not in file2info['FEATURE'].keys():
+        print(f"FEATURE {file1info['FEATURE'][feature]['featurename']}, version {file1info['FEATURE'][feature]['version']}, exp {file1info['FEATURE'][feature]['expiration']}, qty {file1info['FEATURE'][feature]['quantity']} is only in File 1")
+
+# Features only in FILE2
+for feature in dict(sorted(file2info['FEATURE'].items())).keys():
+    if feature not in file1info['FEATURE'].keys():
+        print(f"FEATURE {file2info['FEATURE'][feature]['featurename']}, version {file2info['FEATURE'][feature]['version']}, exp {file2info['FEATURE'][feature]['expiration']}, qty {file2info['FEATURE'][feature]['quantity']} is only in File 2")
